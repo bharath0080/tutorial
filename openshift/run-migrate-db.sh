@@ -19,12 +19,12 @@ oc run ${CONTAINER_NAME}-${VERSION} \
       "containers":[{
         "name": "'${CONTAINER_NAME}'-'${VERSION}'",
         "image": "'${IMAGESTREAM}':'${VERSION}'",
-        "command":["python", "/code/manage.py", "migrate", "--noinput"],
+        "command":["python", "/code/manage.py", "migrate"],
         "env":[{
                 "name": "DB_NAME", 
                 "valueFrom":{
                   "secretKeyRef":{
-                      "name": "postgres-secret"
+                      "name": "postgres-secret",
                       "key": "name"
                   }
                 }
@@ -32,7 +32,7 @@ oc run ${CONTAINER_NAME}-${VERSION} \
               "name": "DB_HOST", 
                 "valueFrom":{
                   "secretKeyRef":{
-                      "name": "postgres-secret"
+                      "name": "postgres-secret",
                       "key": "host"
                   }
                 }
@@ -40,7 +40,7 @@ oc run ${CONTAINER_NAME}-${VERSION} \
               "name": "DB_USER", 
                 "valueFrom":{
                   "secretKeyRef":{
-                      "name": "postgres-secret"
+                      "name": "postgres-secret",
                       "key": "user"
                   }
                 }
@@ -48,7 +48,7 @@ oc run ${CONTAINER_NAME}-${VERSION} \
               "name": "DB_PASSWORD", 
                 "valueFrom":{
                   "secretKeyRef":{
-                      "name": "postgres-secret"
+                      "name": "postgres-secret",
                       "key": "password"
                   }
                 }
