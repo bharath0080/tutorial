@@ -230,17 +230,17 @@ items:
 
   # How the container is scaled
   # https://docs.openshift.com/enterprise/3.7/dev_guide/pod_autoscaling.html
-  # - apiVersion: autoscaling/v1
-  #   kind: HorizontalPodAutoscaler
-  #   metadata:
-  #     name: ${APP_NAME}-${ENVIRONMENT}
-  #     labels:
-  #       app: ${APP_NAME}
-  #   spec:
-  #     scaleTargetRef:
-  #       apiVersion: v1
-  #       kind: DeploymentConfig
-  #       name: ${APP_NAME}-${ENVIRONMENT}
-  #     minReplicas: ${{NUM_REPLICAS}}
-  #     maxReplicas: ${{MAX_REPLICAS}}
-  #     targetCPUUtilizationPercentage: 80
+  - apiVersion: autoscaling/v1
+    kind: HorizontalPodAutoscaler
+    metadata:
+      name: ${APP_NAME}-${ENVIRONMENT}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      scaleTargetRef:
+        apiVersion: v1
+        kind: DeploymentConfig
+        name: ${APP_NAME}-${ENVIRONMENT}
+      minReplicas: ${{NUM_REPLICAS}}
+      maxReplicas: ${{MAX_REPLICAS}}
+      targetCPUUtilizationPercentage: 80
