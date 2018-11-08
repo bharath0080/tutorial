@@ -42,6 +42,16 @@ try {
   }
 
   /*
+   * Run python manage.py migrate
+   */
+  stage('DB Migrate') {
+    test(
+      name: 'tutorial',
+      buildVersion: buildVersion
+    )
+  }
+
+  /*
    * Run the unit tests in a standalone pod. Test results will be uploaded to SonarQube.
    */
   // stage('Sonarqube Test') {
@@ -155,6 +165,15 @@ def build(Map attrs) {
         destinationTag: attrs.buildVersion,
         namespace: env.PROJECT_NAME
       )
+    }
+  }
+}
+
+def migrate(Map attrs) {
+  node {
+    unstash 'scripts'
+    ansiColor('xterm') {
+      sh("./openshift/run-migrate-db.sh ${attrs.name} ${attrs.buildVersion}")
     }
   }
 }
