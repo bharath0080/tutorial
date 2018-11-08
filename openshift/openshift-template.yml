@@ -140,6 +140,26 @@ items:
               env:
                 - name: APP_ENV
                   value: ${ENVIRONMENT}
+                - name: DB_NAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: name
+                - name: DB_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: host
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: user
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: password
                 - name: NEW_RELIC_APP_NAME
                   value: "${APP_NAME} ${ENVIRONMENT}"
                 - name: NEW_RELIC_ENABLED
