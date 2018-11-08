@@ -1,0 +1,226 @@
+# Configures the build pipeline dependencies for openshift
+# See: README.md
+
+apiVersion: v1
+kind: List
+metadata:
+  name: tutorial-pipeline
+items:
+
+# Configure our Docker image repository
+# https://docs.openshift.com/enterprise/3.7/dev_guide/managing_images.html
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: tutorial
+    labels:
+      app: tutorial
+
+# Configure our build pipeline template
+# https://docs.openshift.com/enterprise/3.7/dev_guide/templates.html
+- apiVersion: v1
+  kind: Template
+  metadata:
+    name: tutorial-pipeline
+  parameters:
+  - name: APP_NAME
+    value: tutorial
+  - name: REPO
+    description: Git repo to pull from
+    value: https://github.com/raizv/tutorial.git
+  - name: BRANCH
+    description: Branch to build from
+    value: master
+  objects:
+
+  # Configures the OpenShift/Jenkins build pipeline
+  # https://docs.openshift.com/enterprise/3.7/dev_guide/builds.html#defining-a-buildconfig
+  - apiVersion: v1
+    kind: BuildConfig
+    metadata:
+      name: ${APP_NAME}-pipeline
+      labels:
+        app: ${APP_NAME}
+    spec:
+      source:
+        type: Git
+        git:
+          uri: ${REPO}
+          ref: ${BRANCH}
+        sourceSecret:
+          name: github-secret
+      triggers:
+        - type: GitHub
+          github:
+            secret: secret
+      runPolicy: SerialLatestOnly
+      strategy:
+        type: JenkinsPipeline
+        jenkinsPipelineStrategy:
+          jenkinsfilePath: Jenkinsfile
+        env:
+          # newrelic_api_key is used in openshift/run-newrelic-notify.sh
+          - name: NEW_RELIC_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: newrelic-api-secret
+                key: newrelic-key
+
+  # Configure our Docker container build
+  # https://docs.openshift.com/enterprise/3.7/architecture/core_concepts/builds_and_image_streams.html#docker-build
+  - kind: BuildConfig
+    apiVersion: v1
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      source:
+        type: Git
+        git:
+          uri: ${REPO}
+          ref: ${BRANCH}
+        sourceSecret:
+          name: github-secret
+        runPolicy: Parallel
+      strategy:
+        type: Docker
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+          forcePull: true
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ${APP_NAME}:latest
+
+# Configure our deployment template
+# https://docs.openshift.com/enterprise/3.7/dev_guide/templates.html
+- apiVersion: v1
+  kind: Template
+  metadata:
+    name: tutorial
+  parameters:
+  - name: APP_NAME
+    value: tutorial
+  - name: VERSION
+    value: ''
+  - name: ENVIRONMENT
+    description: The environment name
+    value: production
+  - name: DOCKER_REGISTRY
+    description: What Docker image to deploy
+  - name: NUM_REPLICAS
+    description: How many replicas of the pod to deploy?
+    value: '1'
+  - name: MAX_REPLICAS
+    description: Limit on number of replicas to create
+    value: '3'
+  objects:
+
+  # How the container is deployed
+  # https://docs.openshift.com/enterprise/3.7/dev_guide/deployments.html
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      name: ${APP_NAME}-${ENVIRONMENT}
+      labels:
+        app: ${APP_NAME}
+        version: ${VERSION}
+    spec:
+      replicas: ${{NUM_REPLICAS}}
+      template:
+        metadata:
+          labels:
+            deploymentconfig: ${APP_NAME}-${ENVIRONMENT}
+        spec:
+          containers:
+            - name: ${APP_NAME}
+              image: ${DOCKER_REGISTRY}
+              imagePullPolicy: Always
+              env:
+                - name: APP_ENV
+                  value: ${ENVIRONMENT}
+                - name: NEW_RELIC_APP_NAME
+                  value: "${APP_NAME} ${ENVIRONMENT}"
+                - name: NEW_RELIC_ENABLED
+                  value: 'true'
+                - name: NEW_RELIC_NO_CONFIG_FILE
+                  value: 'true'
+                - name: NEW_RELIC_LICENSE_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: newrelic-license-secret
+                      key: newrelic-license
+              ports:
+                - containerPort: 8000
+              # livenessProbe:
+              #   tcpSocket:
+              #     port: 8000
+              #   initialDelaySeconds: 1
+              #   timeoutSeconds: 1
+              # readinessProbe:
+              #   httpGet:
+              #     path: /version
+              #     port: 8000
+              #   initialDelaySeconds: 1
+              #   timeoutSeconds: 1
+              resources:
+                requests:
+                  cpu: 80m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 100Mi
+
+  # How the container is load balanced
+  # https://docs.openshift.com/enterprise/3.7/architecture/core_concepts/pods_and_services.html
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${APP_NAME}-${ENVIRONMENT}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      ports:
+        - port: 8000
+          targetPort: 8000
+      selector:
+        deploymentconfig: ${APP_NAME}-${ENVIRONMENT}
+
+  # How the container is exposed
+  # https://docs.openshift.com/enterprise/3.7/dev_guide/routes.html
+  - apiVersion: v1
+    kind: Route
+    metadata:
+      name: ${APP_NAME}-${ENVIRONMENT}
+      labels:
+        app: ${APP_NAME}
+      annotations:
+        haproxy.router.openshift.io/disable_cookies: 'true'
+    spec:
+      to:
+        kind: Service
+        name: ${APP_NAME}-${ENVIRONMENT}
+        weight: 100
+      port:
+        targetPort: 8000
+      tls:
+        termination: edge
+        insecureEdgeTerminationPolicy: Redirect
+
+  # How the container is scaled
+  # https://docs.openshift.com/enterprise/3.7/dev_guide/pod_autoscaling.html
+  # - apiVersion: autoscaling/v1
+  #   kind: HorizontalPodAutoscaler
+  #   metadata:
+  #     name: ${APP_NAME}-${ENVIRONMENT}
+  #     labels:
+  #       app: ${APP_NAME}
+  #   spec:
+  #     scaleTargetRef:
+  #       apiVersion: v1
+  #       kind: DeploymentConfig
+  #       name: ${APP_NAME}-${ENVIRONMENT}
+  #     minReplicas: ${{NUM_REPLICAS}}
+  #     maxReplicas: ${{MAX_REPLICAS}}
+  #     targetCPUUtilizationPercentage: 80
