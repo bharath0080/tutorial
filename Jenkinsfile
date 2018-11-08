@@ -91,13 +91,13 @@ try {
   /*
    * Deploy to production environment.
    */
-  // stage('Deploy Production') {
-  //   deploy(
-  //     buildVersion: buildVersion,
-  //     environment: 'production',
-  //     numReplicas: 3
-  //   )
-  // }
+  stage('Deploy Production') {
+    deploy(
+      buildVersion: buildVersion,
+      environment: 'production',
+      numReplicas: 1
+    )
+  }
 
   currentBuild.result = 'SUCCESS'
 }
