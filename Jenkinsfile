@@ -35,7 +35,7 @@ try {
    */
   stage('Build Image') {
     build(
-      name: 'greetings',
+      name: 'tutorial',
       buildVersion: buildVersion,
       gitCommitId: gitCommitId
     )
@@ -46,7 +46,7 @@ try {
    */
   // stage('Sonarqube Test') {
   //   test(
-  //     name: 'greetings',
+  //     name: 'tutorial',
   //     buildVersion: buildVersion
   //   )
   // }
@@ -173,11 +173,11 @@ def deploy(Map attrs) {
     unstash 'scripts'
     sh("""
       ./openshift/run-deploy.sh ${attrs.environment} ${attrs.buildVersion} ${attrs.numReplicas}
-      ./openshift/run-newrelic-notify.sh greetings ${attrs.environment} ${attrs.buildVersion}
+      ./openshift/run-newrelic-notify.sh tutorial ${attrs.environment} ${attrs.buildVersion}
     """)
 
     openshiftVerifyDeployment(
-      deploymentConfig: "greetings-${attrs.environment}",
+      deploymentConfig: "tutorial-${attrs.environment}",
       waitTime: '1800000'
     )
   }
