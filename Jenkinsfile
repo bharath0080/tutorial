@@ -45,7 +45,7 @@ try {
    * Run python manage.py migrate
    */
   stage('DB Migrate') {
-    test(
+    migrate(
       name: 'tutorial',
       buildVersion: buildVersion
     )
